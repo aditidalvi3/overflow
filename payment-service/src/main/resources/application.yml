@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: payment-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:payment_db}
+    username: ${DB_USER:orderflow}
+    password: ${DB_PASSWORD:orderflow}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: payment-service
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: '*'
+        spring.json.add.type.headers: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+server:
+  port: 8083
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+orderflow:
+  payment:
+    # mock (default) uses MockPaymentGateway's deterministic token simulation. Set to "stripe"
+    # (env PAYMENT_PROVIDER=stripe) plus a real STRIPE_API_KEY to use StripePaymentGateway instead
+    # - see its Javadoc, this path is unverified against a live Stripe account.
+    provider: ${PAYMENT_PROVIDER:mock}
+    stripe:
+      api-key: ${STRIPE_API_KEY:}

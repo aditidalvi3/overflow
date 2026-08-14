@@ -1,0 +1,19 @@
+# Default owner for everything not matched below.
+# Replace with your GitHub @handle once this repo is pushed (email works too, but a verified
+# GitHub username is what actually triggers review-request automation).
+*                           aditidalvi13123@gmail.com
+
+# Per-service ownership — useful once this is a team project; for now it's all the same owner,
+# but the boundaries mirror the service split so reviewers know what's "load-bearing" for what.
+/order-service/             aditidalvi13123@gmail.com
+/inventory-service/         aditidalvi13123@gmail.com
+/payment-service/           aditidalvi13123@gmail.com
+/notification-service/      aditidalvi13123@gmail.com
+/api-gateway/                aditidalvi13123@gmail.com
+/orderflow-phase1/          aditidalvi13123@gmail.com
+
+# Architectural decisions and infra changes should always get a human look.
+/adr/                       aditidalvi13123@gmail.com
+/docker-compose.yml         aditidalvi13123@gmail.com
+/k8s/                       aditidalvi13123@gmail.com
+/.github/                   aditidalvi13123@gmail.com
