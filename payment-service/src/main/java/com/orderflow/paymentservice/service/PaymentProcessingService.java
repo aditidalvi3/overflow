@@ -76,18 +76,18 @@ public class PaymentProcessingService {
             return;
         }
 
-        Optional<PendingCharge> maybeCharge = pendingChargeRepository.findById(event.orderId());
-        if (maybeCharge.isEmpty()) {
-            // Eventual-consistency edge case: order.created and inventory.reserved are produced
-            // by different services but keyed by the same orderId, so same-partition delivery
-            // should guarantee order.created lands first. If the PendingCharge is still missing
-            // here, something upstream is out of order (or was replayed strangely) - log loudly
-            // and skip gracefully rather than throwing, since throwing would just trigger an
-            // endless redelivery loop against the same gap.
-            log.error("No PendingCharge found for orderId={}; cannot charge, skipping", event.orderId());
+        PendingCharge charge = awaitPendingCharge(event.orderId());
+        if (charge == null) {
+            // order.created and inventory.reserved are separate topics consumed on separate
+            // threads, so same-key delivery only orders each individually - it does not
+            // guarantee order.created's PendingCharge upsert has landed before inventory.reserved
+            // is processed here. awaitPendingCharge() covers the normal race window; if it's
+            // still missing after that, something upstream is genuinely broken - log loudly and
+            // skip gracefully rather than throwing, since throwing would just trigger an endless
+            // redelivery loop against the same gap.
+            log.error("No PendingCharge found for orderId={} after waiting; cannot charge, skipping", event.orderId());
             return;
         }
-        PendingCharge charge = maybeCharge.get();
 
         PaymentOutcome outcome = paymentGateway.charge(charge.getAmountCents(), charge.getPaymentToken());
         Payment payment = paymentRepository.save(new Payment(event.orderId(), charge.getAmountCents(),
@@ -102,5 +102,25 @@ public class PaymentProcessingService {
                     UUID.randomUUID(), event.correlationId(), event.orderId(), outcome.status().name(),
                     outcome.failureReason(), Instant.now()));
         }
+    }
+
+    /**
+     * Postgres' default READ COMMITTED isolation means each retry here sees a fresh snapshot, so
+     * this will observe OrderCreatedListener's upsert as soon as it commits on its own thread.
+     */
+    private PendingCharge awaitPendingCharge(Long orderId) {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            Optional<PendingCharge> charge = pendingChargeRepository.findById(orderId);
+            if (charge.isPresent()) {
+                return charge.get();
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+        return pendingChargeRepository.findById(orderId).orElse(null);
     }
 }

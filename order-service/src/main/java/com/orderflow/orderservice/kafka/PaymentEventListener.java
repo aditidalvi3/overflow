@@ -33,7 +33,7 @@ public class PaymentEventListener {
         this.eventPublisher = eventPublisher;
     }
 
-    @KafkaListener(topics = Topics.PAYMENT_PROCESSED)
+    @KafkaListener(topics = Topics.PAYMENT_PROCESSED, containerFactory = "paymentProcessedContainerFactory")
     @Transactional
     public void onPaymentProcessed(PaymentProcessedEvent event) {
         MDC.put(MDC_KEY, event.correlationId());
@@ -50,7 +50,7 @@ public class PaymentEventListener {
         }
     }
 
-    @KafkaListener(topics = Topics.PAYMENT_FAILED)
+    @KafkaListener(topics = Topics.PAYMENT_FAILED, containerFactory = "paymentFailedContainerFactory")
     @Transactional
     public void onPaymentFailed(PaymentFailedEvent event) {
         MDC.put(MDC_KEY, event.correlationId());

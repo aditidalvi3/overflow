@@ -34,6 +34,10 @@ public class KafkaConsumerConfig {
 
     private <T> ConcurrentKafkaListenerContainerFactory<String, T> containerFactory(Class<T> targetType) {
         Map<String, Object> consumerProps = kafkaProperties.buildConsumerProperties(null);
+        // JsonDeserializer refuses to be configured both via properties and via the setters below -
+        // application.yml's consumer.properties.spring.json.* entries are only there for the
+        // topics that don't get their own typed factory; strip them here so these setters win.
+        consumerProps.keySet().removeIf(key -> key.startsWith("spring.json."));
 
         JsonDeserializer<T> valueDeserializer = new JsonDeserializer<>(targetType);
         valueDeserializer.addTrustedPackages("*");

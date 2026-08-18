@@ -32,7 +32,7 @@ public class InventoryEventListener {
         this.eventPublisher = eventPublisher;
     }
 
-    @KafkaListener(topics = Topics.INVENTORY_RESERVATION_FAILED)
+    @KafkaListener(topics = Topics.INVENTORY_RESERVATION_FAILED, containerFactory = "inventoryReservationFailedContainerFactory")
     @Transactional
     public void onInventoryReservationFailed(InventoryReservationFailedEvent event) {
         MDC.put(MDC_KEY, event.correlationId());
