@@ -37,6 +37,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ProductCatalogIT {
 
+    static {
+        // JDK's default HttpURLConnection-backed client (what TestRestTemplate uses here) can
+        // throw "HttpRetryException: cannot retry due to server authentication, in streaming
+        // mode" when a POST-with-body request gets back a 401/403 over a kept-alive connection -
+        // it can't rewind the already-streamed body to retry. Disabling keep-alive avoids the
+        // connection reuse that triggers it; this only affects this test JVM's HTTP client.
+        System.setProperty("http.keepAlive", "false");
+    }
+
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("orderflow")
