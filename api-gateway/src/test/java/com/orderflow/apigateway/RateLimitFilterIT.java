@@ -51,10 +51,14 @@ class RateLimitFilterIT {
         orderServiceStub.stop(0);
     }
 
+    // @DynamicPropertySource properties for an indexed list bind as a whole new element, not a
+    // merge with application.yml's route[0] - so overriding just .uri leaves .predicates empty
+    // and fails GatewayProperties' @NotEmpty validation. Restate the predicate here too.
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.cloud.gateway.routes[0].uri",
                 () -> "http://localhost:" + orderServiceStub.getAddress().getPort());
+        registry.add("spring.cloud.gateway.routes[0].predicates[0]", () -> "Path=/api/auth/**,/api/orders/**");
     }
 
     @Autowired

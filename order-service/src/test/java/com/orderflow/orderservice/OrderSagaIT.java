@@ -178,6 +178,7 @@ class OrderSagaIT {
 
     private <T> void publish(String topic, Long key, T event) {
         Map<String, Object> props = KafkaTestUtils.producerProps(kafka.getBootstrapServers());
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         props.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
         DefaultKafkaProducerFactory<String, Object> factory = new DefaultKafkaProducerFactory<>(props);

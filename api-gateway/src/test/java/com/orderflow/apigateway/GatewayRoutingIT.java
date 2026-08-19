@@ -65,15 +65,18 @@ class GatewayRoutingIT {
         inventoryServiceStub.stop(0);
     }
 
-    // application.yml defines route[0]=order-service, route[1]=inventory-service; overriding just
-    // the .uri of each indexed route element merges with the id/predicates/filters that still
-    // come from application.yml, redirecting both routes at our in-process stubs.
+    // @DynamicPropertySource properties for an indexed list bind as a whole new element, not a
+    // merge with application.yml's route[n] - so overriding just .uri leaves .predicates empty
+    // and fails GatewayProperties' @NotEmpty validation. Restate the predicates from
+    // application.yml here too; the CircuitBreaker filters aren't required for these tests.
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.cloud.gateway.routes[0].uri",
                 () -> "http://localhost:" + orderServiceStub.getAddress().getPort());
+        registry.add("spring.cloud.gateway.routes[0].predicates[0]", () -> "Path=/api/auth/**,/api/orders/**");
         registry.add("spring.cloud.gateway.routes[1].uri",
                 () -> "http://localhost:" + inventoryServiceStub.getAddress().getPort());
+        registry.add("spring.cloud.gateway.routes[1].predicates[0]", () -> "Path=/api/products/**");
     }
 
     @Autowired
