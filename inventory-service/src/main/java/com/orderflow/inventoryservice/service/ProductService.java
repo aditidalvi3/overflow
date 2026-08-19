@@ -46,7 +46,7 @@ public class ProductService {
             key = "'list:' + (#sku != null ? #sku : '') + ':' + (#name != null ? #name : '') "
                     + "+ ':' + #pageable.pageNumber + ':' + #pageable.pageSize")
     public PagedResponse<ProductResponse> listProducts(String sku, String name, Pageable pageable) {
-        Page<Product> page = productRepository.search(blankToNull(sku), blankToNull(name), pageable);
+        Page<Product> page = productRepository.search(likePattern(sku), likePattern(name), pageable);
         Page<ProductResponse> mapped = page.map(p -> toResponse(p, inventoryRepository.findById(p.getId()).orElse(null)));
         return PagedResponse.from(mapped);
     }
@@ -57,6 +57,11 @@ public class ProductService {
                 .orElseThrow(() -> new NotFoundException("Product not found: " + id));
         Inventory inventory = inventoryRepository.findById(id).orElse(null);
         return toResponse(product, inventory);
+    }
+
+    private String likePattern(String value) {
+        String normalized = blankToNull(value);
+        return normalized == null ? null : "%" + normalized.toLowerCase() + "%";
     }
 
     private String blankToNull(String value) {

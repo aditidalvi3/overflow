@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -34,7 +35,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 UserPrincipal principal = jwtUtil.parseToken(token);
                 var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + principal.role().name()));
                 var authentication = new UsernamePasswordAuthenticationToken(principal, null, authorities);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                // Spring Security 6's SecurityContextHolderFilter loads the context lazily/once per
+                // request; mutating the context returned by getContext() doesn't reliably persist
+                // under that model. Building a fresh context and installing it via setContext() is
+                // the pattern Spring Security's own migration guide recommends for custom auth filters.
+                SecurityContext context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(authentication);
+                SecurityContextHolder.setContext(context);
             } catch (Exception ex) {
                 SecurityContextHolder.clearContext();
             }

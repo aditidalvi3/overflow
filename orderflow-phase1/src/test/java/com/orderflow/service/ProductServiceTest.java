@@ -55,7 +55,7 @@ class ProductServiceTest {
         setId(product, 1L);
         Inventory inventory = new Inventory(1L, 5);
 
-        when(productRepository.search(eq("SKU"), isNull(), eq(pageable)))
+        when(productRepository.search(eq("%sku%"), isNull(), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(product), pageable, 5));
         when(inventoryRepository.findById(1L)).thenReturn(Optional.of(inventory));
 
