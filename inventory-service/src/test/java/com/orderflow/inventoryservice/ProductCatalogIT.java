@@ -37,15 +37,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ProductCatalogIT {
 
-    static {
-        // JDK's default HttpURLConnection-backed client (what TestRestTemplate uses here) can
-        // throw "HttpRetryException: cannot retry due to server authentication, in streaming
-        // mode" when a POST-with-body request gets back a 401/403 over a kept-alive connection -
-        // it can't rewind the already-streamed body to retry. Disabling keep-alive avoids the
-        // connection reuse that triggers it; this only affects this test JVM's HTTP client.
-        System.setProperty("http.keepAlive", "false");
-    }
-
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("orderflow")
@@ -132,9 +123,11 @@ class ProductCatalogIT {
 
     @Test
     void createProduct_withoutAuth_returns401() {
-        CreateProductRequest request = new CreateProductRequest("CAT-NOAUTH", "Nope", 500L, 5);
-
-        var response = restTemplate.postForEntity(baseUrl() + "/api/products", request, Map.class);
+        // No Authorization header, so Spring Security rejects this before the body is ever read -
+        // sending no body at all sidesteps a JDK HttpURLConnection limitation where a POST body
+        // already being streamed can't be replayed if the response comes back 401/403
+        // ("HttpRetryException: cannot retry due to server authentication, in streaming mode").
+        var response = restTemplate.postForEntity(baseUrl() + "/api/products", null, Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
