@@ -70,16 +70,6 @@ class ProductCatalogIT {
     @Autowired
     private TestRestTemplate restTemplate;
 
-    @org.junit.jupiter.api.BeforeEach
-    void useBufferedRequestFactory() {
-        // JDK's HttpURLConnection refuses to retry a POST that comes back 401/407 while in
-        // "streaming" output mode ("HttpRetryException: cannot retry due to server
-        // authentication, in streaming mode") - a fresh SimpleClientHttpRequestFactory buffers
-        // the request body by default (no streaming mode), avoiding that limitation regardless
-        // of whatever factory TestRestTemplate wired up.
-        restTemplate.getRestTemplate().setRequestFactory(new org.springframework.http.client.SimpleClientHttpRequestFactory());
-    }
-
     private String baseUrl() {
         return "http://localhost:" + port;
     }
@@ -132,13 +122,21 @@ class ProductCatalogIT {
     }
 
     @Test
-    void createProduct_withoutAuth_returns401() {
-        // No Authorization header, so Spring Security rejects this before the body is ever read -
-        // sending no body at all sidesteps a JDK HttpURLConnection limitation where a POST body
-        // already being streamed can't be replayed if the response comes back 401/403
-        // ("HttpRetryException: cannot retry due to server authentication, in streaming mode").
-        var response = restTemplate.postForEntity(baseUrl() + "/api/products", null, Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    void createProduct_withoutAuth_returns401() throws Exception {
+        // TestRestTemplate's default JDK HttpURLConnection-backed client refuses to retry a POST
+        // that comes back 401/407 while in "streaming" output mode ("HttpRetryException: cannot
+        // retry due to server authentication, in streaming mode"), and that mode gets tripped by
+        // this particular embedded-server response regardless of body content or request factory
+        // settings. Use the modern java.net.http.HttpClient directly for just this one assertion -
+        // it has no such limitation.
+        var client = java.net.http.HttpClient.newHttpClient();
+        var httpRequest = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(baseUrl() + "/api/products"))
+                .header("Content-Type", "application/json")
+                .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
+                .build();
+        var response = client.send(httpRequest, java.net.http.HttpResponse.BodyHandlers.discarding());
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
     }
 
     @Test
