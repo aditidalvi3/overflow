@@ -70,6 +70,16 @@ class ProductCatalogIT {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @org.junit.jupiter.api.BeforeEach
+    void useBufferedRequestFactory() {
+        // JDK's HttpURLConnection refuses to retry a POST that comes back 401/407 while in
+        // "streaming" output mode ("HttpRetryException: cannot retry due to server
+        // authentication, in streaming mode") - a fresh SimpleClientHttpRequestFactory buffers
+        // the request body by default (no streaming mode), avoiding that limitation regardless
+        // of whatever factory TestRestTemplate wired up.
+        restTemplate.getRestTemplate().setRequestFactory(new org.springframework.http.client.SimpleClientHttpRequestFactory());
+    }
+
     private String baseUrl() {
         return "http://localhost:" + port;
     }
